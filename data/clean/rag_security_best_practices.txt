@@ -1,0 +1,76 @@
+# Best Practices for Securing Retrieval-Augmented Generation (RAG) Pipelines
+
+## Section 1: Overview of RAG Pipeline Architecture
+Retrieval-Augmented Generation (RAG) is a widely adopted architecture that enhances Large Language Model (LLM) outputs by grounding them in external, domain-specific knowledge. A typical RAG pipeline consists of three core stages: document ingestion, vector retrieval, and response generation. During document ingestion, raw text documents are chunked, embedded using a sentence transformer model, and stored in a vector database such as ChromaDB, Pinecone, or Weaviate. At query time, the user's input is similarly embedded, and the top-K most similar document chunks are retrieved using cosine similarity or approximate nearest neighbor (ANN) search. Finally, the retrieved chunks are concatenated with the user query and passed to the LLM as context for generating a grounded response.
+
+While this architecture dramatically improves factual accuracy and reduces hallucinations compared to standalone LLMs, it introduces a critical attack surface: the retrieval corpus itself. Because documents in the corpus are typically sourced from external or semi-trusted environments (e.g., web crawls, user uploads, third-party knowledge bases), they represent an unvalidated input channel that adversaries can exploit.
+
+## Section 2: Threat Landscape for RAG Systems
+The primary threats facing RAG systems can be categorized into three families:
+
+1. Corpus Poisoning: An adversary introduces malicious documents into the retrieval corpus. These documents are designed to be retrieved for specific queries and may contain misinformation, biased content, or adversarial payloads. Unlike traditional data poisoning that targets model weights, corpus poisoning targets the knowledge base that the model consults at inference time.
+
+2. Indirect Prompt Injection: Malicious instructions are embedded within documents in the retrieval corpus. When these documents are retrieved and passed to the LLM context window, the model may interpret the embedded instructions as part of its system prompt, leading to unauthorized actions such as data exfiltration, response manipulation, or privilege escalation.
+
+3. Embedding Space Manipulation: Adversaries craft documents whose vector representations occupy strategic positions in the embedding space. By optimizing document content to produce embeddings that are close to a wide range of query embeddings, attackers can ensure their malicious documents are retrieved frequently, regardless of the actual query topic. This exploits the hubness phenomenon inherent in high-dimensional vector spaces.
+
+Understanding these threats is essential for designing effective defenses. Each threat vector requires a distinct detection and mitigation strategy, and a robust security posture demands a defense-in-depth approach that addresses all three simultaneously.
+
+## Section 3: Securing the Document Ingestion Pipeline
+The document ingestion pipeline is the first and most critical point of defense. All documents entering the retrieval corpus should pass through a multi-stage validation process before being indexed.
+
+### 3.1 Content Sanitization
+Before embedding, documents should be sanitized to remove potentially dangerous content. This includes stripping hidden text, invisible Unicode characters, zero-width spaces, and other steganographic techniques that attackers may use to conceal malicious instructions from human reviewers while remaining visible to the LLM tokenizer.
+
+### 3.2 Embedding Anomaly Detection
+After generating embeddings for incoming documents, their vector representations should be compared against the distribution of existing clean corpus embeddings. Documents whose embeddings fall significantly outside the expected distribution (measured by z-score relative to the corpus centroid) should be flagged for review or automatically rejected. A common approach uses cosine distance from the corpus centroid, computing the z-score of the new document's distance against the distribution of distances observed in the clean corpus. Typical thresholds are z > 2.5 for flagging and z > 3.5 for automatic rejection.
+
+### 3.3 Perplexity Analysis
+Language model perplexity provides a complementary signal. Natural, human-authored documents exhibit characteristic perplexity ranges when evaluated under a reference language model. Adversarially optimized documents, which may contain unnatural word combinations designed to manipulate embeddings, often exhibit anomalous perplexity scores. Both unusually high perplexity (indicating gibberish or random token sequences) and unusually low perplexity (indicating template-generated adversarial text) should raise alerts.
+
+### 3.4 Instruction Pattern Scanning
+Documents should be scanned for patterns commonly associated with prompt injection attempts. These patterns include imperative command structures ("Ignore all previous instructions," "You are now," "System override"), role-reassignment attempts, and sudden tonal or stylistic shifts within a document. Regular expression filters and classifier-based detectors can be combined for higher accuracy.
+
+## Section 4: Runtime Defenses During Retrieval and Generation
+Even with robust ingestion-time defenses, runtime protections add an essential second layer of security.
+
+### 4.1 Query-Document Relevance Verification
+After retrieving candidate documents, the system should verify that each retrieved document is semantically relevant to the user's query. Documents that score high on vector similarity but low on semantic coherence with the query may indicate adversarial embedding manipulation. Cross-encoder re-ranking models can be employed to filter out documents that achieve high retrieval scores through embedding space manipulation rather than genuine topical relevance.
+
+### 4.2 Context Window Isolation
+The LLM's context window should enforce clear boundaries between system instructions, user input, and retrieved documents. Techniques such as delimiter tokens, structured prompt templates, and instruction hierarchy frameworks help the model distinguish between trusted instructions and potentially untrusted retrieved content. This reduces the effectiveness of indirect prompt injection attacks embedded in retrieved documents.
+
+### 4.3 Output Monitoring and Guardrails
+The LLM's generated responses should be monitored for signs of successful prompt injection, such as responses that deviate significantly from the expected format, contain unauthorized data disclosures, or attempt to execute actions outside the model's intended scope. Output classifiers trained on examples of normal and compromised responses can detect and block malicious outputs before they reach the end user.
+
+## Section 5: Continuous Monitoring and Corpus Health
+Maintaining the security of a RAG system is not a one-time task but an ongoing operational responsibility.
+
+### 5.1 Periodic Corpus Audits
+The retrieval corpus should be periodically re-scanned using updated detection models. As adversarial techniques evolve, documents that passed initial screening may later be identified as suspicious. Regular audits ensure that the corpus remains clean over time.
+
+### 5.2 Hubness Monitoring
+The k-occurrence distribution of documents in the vector index should be monitored continuously. Documents that appear as nearest neighbors for a disproportionately large number of queries are potential hubs and should be investigated. A healthy corpus exhibits a relatively uniform k-occurrence distribution, while the presence of high-hubness documents suggests possible embedding space manipulation.
+
+### 5.3 Retrieval Logging and Anomaly Detection
+All retrieval events should be logged, including the query, retrieved document IDs, similarity scores, and final LLM response. Statistical analysis of retrieval patterns can reveal anomalies such as a single document being retrieved across many unrelated queries, sudden changes in retrieval distribution, or systematic co-retrieval of specific document clusters. These patterns may indicate an ongoing poisoning campaign.
+
+### 5.4 Model and Embedding Updates
+As embedding models are updated or fine-tuned, the entire corpus should be re-embedded to maintain consistency. Version mismatches between the embedding model used for indexing and the model used for querying can create blind spots that adversaries may exploit.
+
+## Section 6: Building a Poison Detection System (PDS)
+A Poison Detection System integrates the defensive techniques described above into a unified, automated pipeline. The architecture of a PDS typically includes four core modules:
+
+1. Embedding Anomaly Detector: Computes the z-score of incoming document embeddings relative to the clean corpus centroid. This module identifies documents that are statistically unusual in the embedding space.
+
+2. Perplexity Scorer: Evaluates document text under a reference language model to identify unnatural language patterns associated with adversarial optimization.
+
+3. Instruction Injection Scanner: Applies pattern matching and classification to detect embedded prompt injection attempts within document text.
+
+4. Hubness Analyzer: Examines the nearest neighbor graph of the vector index to identify documents with abnormally high k-occurrence counts.
+
+Each module produces an independent anomaly score. An aggregation layer combines these scores using a weighted ensemble approach, producing a composite risk score for each document. Documents exceeding the risk threshold are quarantined and flagged for human review.
+
+The PDS should be deployed both at ingestion time (screening new documents before they enter the corpus) and as a periodic batch process (re-scanning the existing corpus). This dual deployment ensures comprehensive coverage against both initial poisoning attempts and evolving adversarial techniques.
+
+By implementing these best practices, organizations can build RAG systems that deliver the benefits of grounded, knowledge-augmented generation while maintaining robust defenses against adversarial manipulation, data poisoning, and prompt injection attacks.

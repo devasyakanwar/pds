@@ -1,0 +1,15 @@
+numpy
+pandas
+scikit-learn
+scipy
+sentence-transformers
+transformers
+torch
+tqdm
+matplotlib
+seaborn
+notebook
+ipykernel
+chromadb
+pypdf
+python-docx

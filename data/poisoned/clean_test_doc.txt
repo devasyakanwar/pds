@@ -1,0 +1,20 @@
+# Understanding Evasion Attacks in Machine Learning
+
+## Overview
+Evasion attacks are a class of adversarial attacks that occur during the inference phase of a machine learning model. Unlike data poisoning attacks that corrupt the training process, evasion attacks manipulate the input data at prediction time to cause the model to produce incorrect outputs. These attacks are particularly concerning in safety-critical applications such as autonomous driving, malware detection, and medical diagnosis.
+
+## How Evasion Attacks Work
+The fundamental principle behind evasion attacks is the exploitation of the model's decision boundaries. Machine learning models learn decision boundaries from training data, and these boundaries define the regions in feature space that correspond to different output classes. An adversary crafts a perturbation that moves a legitimate input across a decision boundary, causing the model to misclassify it.
+
+In the context of deep neural networks, gradient-based methods are the most common approach for generating adversarial examples. The attacker computes the gradient of the model's loss function with respect to the input features, then applies a small perturbation in the direction that maximizes the loss. Popular methods include the Fast Gradient Sign Method (FGSM), Projected Gradient Descent (PGD), and the Carlini and Wagner (C&W) attack.
+
+## Defenses Against Evasion Attacks
+Several defense strategies have been proposed to mitigate evasion attacks:
+
+1. Adversarial Training: The model is trained on a mixture of clean and adversarially perturbed examples, improving its robustness to perturbations at test time.
+2. Input Preprocessing: Techniques such as input smoothing, JPEG compression, or feature squeezing reduce the effectiveness of adversarial perturbations by removing high-frequency noise.
+3. Certified Defenses: Randomized smoothing and interval bound propagation provide provable guarantees on model robustness within a specified perturbation radius.
+4. Detection Methods: Separate detector networks or statistical tests can identify adversarial inputs before they reach the main classifier.
+
+## Relevance to RAG Security
+In Retrieval-Augmented Generation systems, evasion attacks can target the embedding model used for document retrieval. An adversary could craft queries or documents with subtle perturbations that manipulate retrieval results without changing the apparent meaning of the text. Understanding evasion attacks is therefore essential for building robust RAG pipelines that resist adversarial manipulation at both the retrieval and generation stages.
