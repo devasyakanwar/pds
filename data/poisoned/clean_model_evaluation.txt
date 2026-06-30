@@ -1,0 +1,21 @@
+# Model Evaluation Metrics for Classification Tasks
+
+## Introduction
+Evaluating machine learning models requires careful selection of metrics that align with the task objectives. Different metrics capture different aspects of model performance, and relying on a single metric can be misleading, especially in the presence of class imbalance or varying cost structures.
+
+## Common Metrics
+
+### Accuracy
+Accuracy measures the proportion of correct predictions out of all predictions. While intuitive, accuracy can be misleading when classes are imbalanced. A model that always predicts the majority class can achieve high accuracy while completely failing on the minority class.
+
+### Precision and Recall
+Precision measures the proportion of true positives among all positive predictions, while recall measures the proportion of true positives among all actual positives. In anomaly detection systems, high recall is critical because missing a true anomaly (false negative) is typically more costly than flagging a benign sample (false positive).
+
+### F1 Score
+The F1 score is the harmonic mean of precision and recall, providing a balanced measure that penalizes models with extreme differences between the two. The F-beta score generalizes this by allowing a weight parameter beta that controls the relative importance of recall versus precision.
+
+### ROC-AUC
+The Receiver Operating Characteristic curve plots the true positive rate against the false positive rate at various threshold settings. The Area Under the Curve (AUC) provides a threshold-independent measure of discrimination ability. An AUC of 0.5 indicates random performance, while 1.0 indicates perfect discrimination.
+
+## Application to Poison Detection
+In poison detection systems, the choice of evaluation metric is critical. Since poisoned documents represent a small fraction of the corpus, accuracy alone is insufficient. The system should optimize for high recall to ensure that poisoned documents are not missed, while maintaining reasonable precision to avoid overwhelming human reviewers with false positives. The F2 score, which weights recall higher than precision, is often an appropriate choice for such security-critical applications.

@@ -1,0 +1,24 @@
+# Federated Learning: Privacy-Preserving Machine Learning
+
+## Overview
+Federated Learning (FL) is a machine learning paradigm that enables multiple participants to collaboratively train a shared model without sharing their raw data. Instead of centralizing data on a single server, each participant trains a local model on their own data and only shares model updates (gradients or weights) with a central aggregation server.
+
+## How Federated Learning Works
+The standard Federated Averaging (FedAvg) algorithm proceeds in rounds:
+1. The server initializes a global model and distributes it to selected clients.
+2. Each client trains the model on its local dataset for several epochs.
+3. Clients send their updated model parameters back to the server.
+4. The server aggregates the updates (typically by weighted averaging) to produce a new global model.
+5. The process repeats until convergence.
+
+## Security Concerns in Federated Learning
+While FL improves data privacy, it introduces new attack surfaces:
+- Model Poisoning: A malicious client can send corrupted model updates designed to degrade the global model's performance or introduce backdoors.
+- Byzantine Attacks: Compromised clients submit arbitrary or adversarial gradient updates to manipulate the global model.
+- Inference Attacks: An adversary with access to model updates can potentially reconstruct private training data through gradient inversion techniques.
+
+## Defenses
+Robust aggregation methods such as Krum, Trimmed Mean, and Median aggregation can mitigate poisoning attacks by filtering out outlier updates. Differential privacy mechanisms add calibrated noise to model updates, providing formal privacy guarantees against inference attacks. Secure aggregation protocols ensure that the server can compute the aggregate without seeing individual client updates.
+
+## Relevance to RAG Security
+Federated learning principles can be applied to distributed RAG systems where multiple organizations contribute documents to a shared retrieval corpus without exposing their raw data. The same poisoning detection techniques used in centralized RAG pipelines must be adapted for the federated setting, where document quality verification must occur without direct access to the source data.
